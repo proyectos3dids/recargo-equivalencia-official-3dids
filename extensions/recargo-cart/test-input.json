@@ -1,0 +1,36 @@
+{
+  "cart": {
+    "lines": [
+      {
+        "id": "gid://shopify/CartLine/test-123",
+        "quantity": 2,
+        "cost": {
+          "amountPerQuantity": {
+            "amount": "100.00"
+          }
+        },
+        "merchandise": {
+          "__typename": "ProductVariant",
+          "product": {
+            "title": "Test Product"
+          }
+        }
+      },
+      {
+        "id": "gid://shopify/CartLine/recargo-456",
+        "quantity": 1,
+        "cost": {
+          "amountPerQuantity": {
+            "amount": "0.00"
+          }
+        },
+        "merchandise": {
+          "__typename": "ProductVariant",
+          "product": {
+            "title": "Recargo de equivalencia"
+          }
+        }
+      }
+    ]
+  }
+}

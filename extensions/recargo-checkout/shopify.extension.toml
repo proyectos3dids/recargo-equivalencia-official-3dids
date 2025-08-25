@@ -6,8 +6,8 @@
 api_version = "2025-07"
 
 [[extensions]]
-name = "recargo"
-handle = "recargo"
+name = "recargo-checkout"
+handle = "recargo-checkout"
 type = "ui_extension"
 
 

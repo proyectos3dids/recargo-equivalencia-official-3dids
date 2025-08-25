@@ -1,8 +1,8 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "f7ef609a633175b38e769c68c1a7e874"
-name = "recargo-equivalencia-molis"
-handle = "recargo-equivalencia-molis"
+name = "recargo-equivalencia-official-3dids"
+handle = "recargo-equivalencia-official-3dids"
 application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true
 
@@ -14,7 +14,7 @@ api_version = "2025-07"
 
 [access_scopes]
 # Learn more at https://shopify.dev/docs/apps/tools/cli/configuration#access_scopes
-scopes = ""
+scopes = "write_cart_transforms,read_customers"
 
 [auth]
 redirect_urls = [ "https://shopify.dev/apps/default-app-home/api/auth" ]
