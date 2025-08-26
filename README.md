@@ -1,78 +1,186 @@
-# Shopify App Template - Extension only
+# Sistema de Recargo Equivalencia para Shopify
 
-This is a template for building an [extension-only Shopify app](https://shopify.dev/docs/apps/build/app-extensions/build-extension-only-app). It contains the basics for building a Shopify app that uses only app extensions.
+## Descripción
 
-This template doesn't include a server or the ability to embed a page in the Shopify Admin. If you want either of these capabilities, choose the [Remix app template](https://github.com/Shopify/shopify-app-template-remix) instead.
+Este sistema automatiza la gestión del recargo de equivalencia para clientes específicos en tiendas Shopify. Detecta automáticamente si un cliente tiene la etiqueta "RE" y añade o elimina el producto de recargo según corresponda.
 
-Whether you choose to use this template or another one, you can use your preferred package manager and the Shopify CLI with [these steps](#installing-the-template).
+## Características
 
-## Benefits
+- ✅ Detección automática de clientes con etiqueta "RE"
+- ✅ Añade automáticamente el producto de recargo al carrito
+- ✅ Elimina el recargo cuando el cliente no está logueado o no tiene la etiqueta
+- ✅ Intercepta botones de checkout para validaciones adicionales
+- ✅ Compatible con cart drawer, página de carrito y notificaciones
 
-Shopify apps are built on a variety of Shopify tools to create a great merchant experience. The [create an app](https://shopify.dev/docs/apps/getting-started/create) tutorial in our developer documentation will guide you through creating a Shopify app.
 
-This app template does little more than install the CLI and scaffold a repository.
+## Archivos Modificados
 
-## Getting started
+Este sistema requiere modificaciones en los siguientes archivos:
 
-### Requirements
+### 1. Snippet Principal
+- **Archivo**: `snippets/recargo-equivalencia-3dids.liquid`
+- **Descripción**: Contiene toda la lógica del sistema de recargo
 
-1. You must [download and install Node.js](https://nodejs.org/en/download/) if you don't already have it.
-1. You must [create a Shopify partner account](https://partners.shopify.com/signup) if you don’t have one.
-1. You must create a store for testing if you don't have one, either a [development store](https://help.shopify.com/en/partners/dashboard/development-stores#create-a-development-store) or a [Shopify Plus sandbox store](https://help.shopify.com/en/partners/dashboard/managing-stores/plus-sandbox-store).
+### 2. Layout Principal
+- **Archivo**: `layout/theme.liquid`
+- **Modificación**: Añadir el render del snippet antes del cierre del `</body>`
 
-### Installing the template
+### 3. Configuración del Tema
+- **Archivo**: `config/settings_schema.json`
+- **Modificación**: Añadir configuración para seleccionar el producto de recargo
 
-This template can be installed using your preferred package manager:
+## Instalación
 
-Using yarn:
+### Paso 1: Crear el Snippet
 
-```shell
-yarn create @shopify/app
+1. Crea el archivo `snippets/recargo-equivalencia-3dids.liquid` con el contenido del sistema
+2. El snippet ya incluye toda la lógica necesaria para:
+   - Detectar clientes con etiqueta "RE"
+   - Gestionar atributos del carrito
+   - Añadir/eliminar productos automáticamente
+   - Interceptar botones de checkout
+
+### Paso 2: Modificar el Layout
+
+En `layout/theme.liquid`, añade antes del cierre de `</body>`:
+
+```liquid
+{% render 'recargo-equivalencia-3dids' %}
 ```
 
-Using npm:
+### Paso 3: Configurar el Producto de Recargo
 
-```shell
-npm init @shopify/app@latest
+En `config/settings_schema.json`, añade esta configuración:
+
+```json
+{
+  "name": "theme_info",
+  "theme_name": "Tu Tema",
+  "theme_version": "1.0.0",
+  "theme_author": "Tu Nombre",
+  "theme_documentation_url": "",
+  "theme_support_url": ""
+},
+{
+  "name": "Recargo Equivalencia",
+  "settings": [
+    {
+      "type": "product",
+      "id": "recargo_equivalencia_product",
+      "label": "Producto de Recargo Equivalencia",
+      "info": "Selecciona el producto que se añadirá automáticamente para clientes con etiqueta RE"
+    }
+  ]
+}
 ```
 
-Using pnpm:
+### Paso 4: Crear el Producto de Recargo
 
-```shell
-pnpm create @shopify/app@latest
+1. Ve a **Productos** en tu admin de Shopify
+2. Crea un nuevo producto con:
+   - **Título**: "Recargo de Equivalencia" (o el nombre que prefieras)
+   - **Precio**: 0€ (el precio real se calculará dinámicamente por el script)
+   - **Visible**: No (para que no aparezca en la tienda)
+   - **Impuestos**: Desmarcar "Este producto está sujeto a impuestos"
+   - **Inventario**: Desmarcar "Hacer seguimiento de la cantidad"
+   - **IMPORTANTE**: En la sección SEO, configura el campo `hidden` con valor `1` para que el producto no aparezca en buscadores ni en el sitio web
+
+### Paso 5: Configurar el Tema
+
+1. Ve a **Temas** > **Personalizar**
+2. En **Configuración del tema** > **Recargo Equivalencia**
+3. Selecciona el producto de recargo creado en el paso anterior
+4. Guarda los cambios
+
+### Paso 6: Configurar Clientes
+
+Para que un cliente tenga recargo automático:
+
+1. Ve a **Clientes** en tu admin
+2. Edita el cliente correspondiente
+3. En **Etiquetas**, añade: `RE`
+4. Guarda los cambios
+
+## Funcionamiento
+
+### Para Clientes con Etiqueta "RE"
+
+1. **Al cargar la página**: El sistema detecta la etiqueta "RE"
+2. **Atributos del carrito**: Se establecen `cliente_RE: true` y `recargo_variant_id`
+3. **Producto de recargo**: Se añade automáticamente al carrito si no está presente
+4. **Checkout**: El recargo se incluye en el pedido
+
+### Para Clientes sin Etiqueta o No Logueados
+
+1. **Limpieza automática**: Se eliminan los atributos `cliente_RE` y `recargo_variant_id`
+2. **Eliminación del producto**: Se quita el producto de recargo del carrito
+3. **Checkout normal**: Sin recargo adicional
+
+
+
+## Personalización
+
+### Cambiar el Nombre de la Etiqueta
+
+En el snippet, busca:
+
+```liquid
+{% if tag_lowercase == 're' %}
 ```
 
-This will clone the template and install the required dependencies.
+Y cambia `'re'` por la etiqueta que prefieras.
 
-#### Local Development
 
-[The Shopify CLI](https://shopify.dev/docs/apps/tools/cli) connects to an app in your Partners dashboard. It provides environment variables and runs commands in parallel.
 
-You can develop locally using your preferred package manager. Run one of the following commands from the root of your app.
+### Añadir Validaciones Adicionales
 
-Using yarn:
+Puedes añadir más condiciones en la sección de detección de clientes:
 
-```shell
-yarn dev
+```liquid
+{% if customer and customer.tags contains 'RE' and customer.orders_count > 0 %}
+  <!-- Lógica adicional -->
+{% endif %}
 ```
 
-Using npm:
+## Compatibilidad
 
-```shell
-npm run dev
-```
+- ✅ **Shopify Dawn Theme** (probado)
+- ✅ **Temas basados en Dawn**
+- ✅ **Cart Drawer**
+- ✅ **Página de Carrito**
+- ✅ **Ajax Cart**
+- ⚠️ **Otros temas**: Puede requerir ajustes menores
 
-Using pnpm:
+## Solución de Problemas
 
-```shell
-pnpm run dev
-```
+### El recargo no se añade automáticamente
 
-Open the URL generated in your console. Once you grant permission to the app, you can start development (such as generating extensions).
+1. Verifica que el cliente tenga la etiqueta "RE"
+2. Comprueba que el producto de recargo esté configurado en el tema
+3. Verifica que el producto de recargo esté disponible
 
-## Developer resources
+### El recargo no se elimina
 
-- [Introduction to Shopify apps](https://shopify.dev/docs/apps/getting-started)
-- [App extensions](https://shopify.dev/docs/apps/build/app-extensions)
-- [Extension only apps](https://shopify.dev/docs/apps/build/app-extensions/build-extension-only-app)
-- [Shopify CLI](https://shopify.dev/docs/apps/tools/cli)
+1. Verifica que el snippet esté incluido en `theme.liquid`
+2. Asegúrate de que el producto de recargo esté configurado correctamente
+
+### Problemas con el checkout
+
+1. Asegúrate de que el producto de recargo tenga inventario suficiente
+2. Verifica que el producto no esté archivado
+
+## Créditos
+
+- **Desarrollado por**: David Ávila
+- **Empresa**: 3dids.com
+- **Contacto**: info@3dids.com
+- **Versión**: 1.0.0
+- **Fecha**: 2025
+
+## Licencia
+
+© 2025 3dids.com - Todos los derechos reservados
+
+---
+
+**Nota**: Este sistema ha sido desarrollado específicamente para gestionar recargos de equivalencia de forma automática. Para soporte técnico o personalizaciones adicionales, contacta con info@3dids.com

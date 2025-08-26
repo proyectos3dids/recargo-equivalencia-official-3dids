@@ -1,0 +1,20 @@
+mutation {
+  metafieldDefinitionCreate(definition: {
+    name: "VIES NUMBER"
+    namespace: "checkoutblocks"
+    key: "vies"
+    type: "single_line_text_field"
+    ownerType: ORDER
+    visibleToStorefrontApi: false
+  }) {
+    metafieldDefinition {
+      id
+      name
+      key
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}

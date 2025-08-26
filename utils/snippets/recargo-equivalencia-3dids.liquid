@@ -1,0 +1,550 @@
+{% comment %}
+  * RECARGO EQUIVALENCIA SCRIPT - RE Surcharge System
+  * 
+  * Description:
+  * This script intercepts checkout button clicks and automatically manages
+  * the surcharge product for customers with "RE" tag.
+  * 
+  * Targets:
+  * - Cart drawer checkout button
+  * - Main cart footer checkout button
+  * - Cart notification checkout button
+  * 
+  * Usage:
+  * {% render 'recargo-equivalencia-3dids' %}
+  * 
+  * Author: David Ávila
+  * Company: 3dids.com
+  * Contact: david.avila@3dids.com
+  * 
+  * © 2025 3dids.com
+{% endcomment %}
+
+{% comment %} Check if customer is logged in and has "re" tag {% endcomment %}
+{% assign recargo = false %}
+
+{% comment %} Get the recargo product variant ID from theme settings {% endcomment %}
+{% assign recargo_product = all_products[settings.recargo_equivalencia_product] %}
+{% assign recargo_variant_id = recargo_product.selected_or_first_available_variant.id %}
+
+{% if customer %}
+  {% for tag in customer.tags %}
+    {% assign tag_lowercase = tag | downcase %}
+    {% if tag_lowercase == 're' %}
+      {% assign recargo = true %}
+      {%- if cart.attributes.cliente_RE != "true" or cart.attributes.recargo_variant_id != recargo_variant_id -%}
+        <script>
+          fetch('/cart/update.js', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              attributes: {
+                cliente_RE: 'true',
+                recargo_variant_id: '{{ recargo_variant_id }}'
+              }
+            })
+          });
+        </script>
+      {%- endif -%}
+      {% break %}
+    {% endif %}
+  {% endfor %}
+{% else %}
+  {% comment %} If no customer is logged in, remove cliente_RE and recargo_variant_id attributes and remove recargo product from cart {% endcomment %}
+  {%- if cart.attributes.cliente_RE or cart.attributes.recargo_variant_id -%}
+    <script>
+      console.log('=== NO CUSTOMER LOGGED IN - CLEANING CART ===');
+      console.log('Removing cliente_RE attributes and recargo product from cart');
+      
+      // First, remove the attributes
+      fetch('/cart/update.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          attributes: {
+            cliente_RE: null,
+            recargo_variant_id: null
+          }
+        })
+      }).then(() => {
+        console.log('✓ Cart attributes removed');
+        
+        // Then, check if recargo product is in cart and remove it
+        {% assign recargo_variant_id = all_products[settings.recargo_equivalencia_product].selected_or_first_available_variant.id %}
+        {% for item in cart.items %}
+          {% if item.variant_id == recargo_variant_id %}
+            console.log('Found recargo product in cart, removing it');
+            fetch('/cart/change.js', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                id: {{ item.variant_id }},
+                quantity: 0
+              })
+            }).then(() => {
+              console.log('✓ Recargo product removed from cart');
+            }).catch(error => {
+              console.error('✗ Error removing recargo product:', error);
+            });
+            {% break %}
+          {% endif %}
+        {% endfor %}
+      }).catch(error => {
+        console.error('✗ Error removing cart attributes:', error);
+      });
+    </script>
+  {%- endif -%}
+{% endif %}
+
+{% comment %} Auto-add recargo product if cliente_RE is true and product is not in cart {% endcomment %}
+<script>
+  console.log('=== RECARGO DEBUG INFO ===');
+  console.log('Cart attributes:', {{ cart.attributes | json }});
+  console.log('cliente_RE attribute:', '{{ cart.attributes.cliente_RE }}');
+  console.log('recargo_variant_id from settings:', {{ recargo_variant_id }});
+  console.log('Cart items count:', {{ cart.items.size }});
+  console.log('Cart items:', {{ cart.items | map: 'variant_id' | json }});
+</script>
+
+{%- if cart.attributes.cliente_RE == "true" -%}
+  <script>
+    console.log('✓ Cliente RE condition met - cliente_RE is true');
+  </script>
+  
+  {% comment %} Check if recargo product is already in cart {% endcomment %}
+  {% assign recargo_in_cart = false %}
+  {% for item in cart.items %}
+    <script>
+      console.log('Checking item variant_id:', {{ item.variant_id }}, 'against recargo_variant_id:', {{ recargo_variant_id }});
+    </script>
+    {% if item.variant_id == recargo_variant_id %}
+      {% assign recargo_in_cart = true %}
+      <script>
+        console.log('✓ Recargo product found in cart!');
+      </script>
+      {% break %}
+    {% endif %}
+  {% endfor %}
+  
+  <script>
+    console.log('recargo_in_cart result:', {{ recargo_in_cart }});
+  </script>
+  
+  {% comment %} If recargo product is not in cart, add it automatically {% endcomment %}
+  {%- unless recargo_in_cart -%}
+    <script>
+      console.log('✓ Recargo product NOT in cart - proceeding to add it');
+      console.log('Adding recargo product with variant ID:', {{ recargo_variant_id }});
+      
+      fetch('/cart/add.js', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: {{ recargo_variant_id }},
+          quantity: 1
+        })
+      })
+      .then(response => {
+        console.log('Add to cart response status:', response.status);
+        return response.json();
+      })
+      .then(data => {
+        console.log('✓ Recargo product added successfully:', data);
+        console.log('✓ Product added without page refresh');
+        // Optionally trigger a cart update event or update cart UI here
+        // window.dispatchEvent(new Event('cart:updated'));
+      })
+      .catch(error => {
+        console.error('✗ Error adding recargo product:', error);
+      });
+    </script>
+  {%- else -%}
+    <script>
+      console.log('ℹ Recargo product already in cart - no action needed');
+    </script>
+  {%- endunless -%}
+{%- else -%}
+  <script>
+    console.log('ℹ Cliente RE condition NOT met - cliente_RE is not true');
+  </script>
+{%- endif -%}
+
+
+
+{% comment %} Hidden field for cart attribute {% endcomment %}
+<input type="hidden" id="cart-re-attribute" {% if recargo %}data-re="true"{% endif %} style="display: none;">
+
+<script>
+  // Import PUB_SUB_EVENTS and pubsub functions
+  const PUB_SUB_EVENTS = {
+    cartUpdate: 'cart-update',
+    quantityUpdate: 'quantity-update',
+    optionValueSelectionChange: 'option-value-selection-change',
+    variantChange: 'variant-change',
+    cartError: 'cart-error',
+  };
+
+  let subscribers = {};
+
+  function subscribe(eventName, callback) {
+    if (subscribers[eventName] === undefined) {
+      subscribers[eventName] = [];
+    }
+
+    subscribers[eventName] = [...subscribers[eventName], callback];
+
+    return function unsubscribe() {
+      subscribers[eventName] = subscribers[eventName].filter((cb) => {
+        return cb !== callback;
+      });
+    };
+  }
+
+  function publish(eventName, data) {
+    if (subscribers[eventName]) {
+      const promises = subscribers[eventName]
+        .map((callback) => callback(data))
+      return Promise.all(promises);
+    } else {
+      return Promise.resolve()
+    }
+  }
+
+  class CheckoutHijacker {
+    constructor() {
+      this.init();
+    }
+
+    init() {
+      // Wait for DOM to be ready
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => this.hijackButtons());
+      } else {
+        this.hijackButtons();
+      }
+    }
+
+    hijackButtons() {
+      // Hijack checkout buttons in cart drawer
+      this.hijackCartDrawerCheckout();
+      
+      // Hijack checkout buttons in main cart footer
+      this.hijackMainCartCheckout();
+      
+      // Hijack cart notification checkout
+      this.hijackCartNotificationCheckout();
+    }
+
+
+
+    hijackCartDrawerCheckout() {
+      const cartDrawerCheckout = document.querySelector('#CartDrawer-Checkout');
+      
+      if (cartDrawerCheckout) {
+        // Clone to remove existing listeners
+        const newButton = cartDrawerCheckout.cloneNode(true);
+        cartDrawerCheckout.parentNode.replaceChild(newButton, cartDrawerCheckout);
+        
+        newButton.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.newButtonAction(newButton);
+        });
+      }
+    }
+
+    hijackMainCartCheckout() {
+      const mainCartCheckout = document.querySelector('#checkout');
+      
+      if (mainCartCheckout) {
+        // Clone to remove existing listeners
+        const newButton = mainCartCheckout.cloneNode(true);
+        mainCartCheckout.parentNode.replaceChild(newButton, mainCartCheckout);
+        
+        newButton.addEventListener('click', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          this.newButtonAction(newButton);
+        });
+      }
+    }
+
+    hijackCartNotificationCheckout() {
+      const cartNotificationForm = document.querySelector('#cart-notification-form');
+      
+      if (cartNotificationForm) {
+        const checkoutButton = cartNotificationForm.querySelector('button[name="checkout"]');
+        
+        if (checkoutButton) {
+          // Clone to remove existing listeners
+          const newButton = checkoutButton.cloneNode(true);
+          checkoutButton.parentNode.replaceChild(newButton, checkoutButton);
+          
+          newButton.addEventListener('click', (evt) => {
+            evt.preventDefault();
+            evt.stopPropagation();
+            this.newButtonAction(newButton);
+          });
+        }
+        
+        // Also hijack form submit
+        const newForm = cartNotificationForm.cloneNode(true);
+        cartNotificationForm.parentNode.replaceChild(newForm, cartNotificationForm);
+        
+        newForm.addEventListener('submit', (evt) => {
+          evt.preventDefault();
+          evt.stopPropagation();
+          const button = newForm.querySelector('button[name="checkout"]');
+          this.newButtonAction(button);
+        });
+      }
+    }
+
+    // Function to get variant ID from theme settings
+    getRecargoEquivalenciaVariant() {
+      // Get the product from theme settings
+      const productHandle = '{{ settings.recargo_equivalencia_product.handle }}';
+      const variantId = '{{ settings.recargo_equivalencia_product.selected_or_first_available_variant.id }}';
+      
+      if (productHandle && variantId && variantId !== '') {
+        return parseInt(variantId);
+      }
+      
+      console.error('Recargo de equivalencia product not configured in theme settings');
+      return null;
+    }
+
+    // Function to check and fix recargo equivalencia quantity in cart
+    checkAndFixRecargoQuantity(variantId, callback) {
+      console.log('Checking recargo equivalencia quantity for variant ID:', variantId);
+      
+      // Get current cart
+      fetch('/cart.js')
+        .then(response => response.json())
+        .then(cart => {
+          console.log('Current cart items:', cart.items);
+          
+          // Find the recargo equivalencia product in cart
+          const recargoItem = cart.items.find(item => {
+            console.log('Checking item variant_id:', item.variant_id, 'against target:', variantId);
+            return item.variant_id == variantId; // Use == instead of === to handle string/number comparison
+          });
+          
+          console.log('Found recargo item:', recargoItem);
+          
+          if (recargoItem && recargoItem.quantity > 1) {
+            console.log('Recargo quantity is', recargoItem.quantity, '- fixing to 1');
+            
+            // Find the line index of the recargo item (1-based index)
+            const lineIndex = cart.items.findIndex(item => item.variant_id == variantId) + 1;
+            console.log('Found recargo item at line index:', lineIndex);
+            
+            // Update quantity to 1 using line-based format
+            const updateData = {
+              'line': lineIndex,
+              'quantity': 1
+            };
+            
+            console.log('Sending update request:', updateData);
+            
+            fetch('/cart/change.js', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify(updateData)
+            })
+            .then(response => {
+              console.log('Update response status:', response.status);
+              return response.json();
+            })
+            .then(data => {
+              console.log('Recargo equivalencia quantity fixed to 1. Response:', data);
+              
+              // Dispatch cart update event
+              publish(PUB_SUB_EVENTS.cartUpdate, {
+                source: 'recargo-equivalencia-3dids-quantity-fix',
+                cartData: data,
+                variantId: variantId
+              });
+              
+              // Update cart UI
+              const cartItems = document.querySelector('cart-items');
+              if (cartItems && typeof cartItems.onCartUpdate === 'function') {
+                cartItems.onCartUpdate();
+              }
+              
+              const cartDrawerItems = document.querySelector('cart-drawer-items');
+              if (cartDrawerItems && typeof cartDrawerItems.onCartUpdate === 'function') {
+                cartDrawerItems.onCartUpdate();
+              }
+              
+              if (callback) callback();
+            })
+            .catch(error => {
+              console.error('Error fixing recargo equivalencia quantity:', error);
+              if (callback) callback();
+            });
+          } else {
+            console.log('Quantity is already 1 or product not in cart, continuing');
+            if (callback) callback();
+          }
+        })
+        .catch(error => {
+          console.error('Error checking cart:', error);
+          if (callback) callback();
+        });
+    }
+
+    // Function to add product to cart
+     addProductToCart(variantId, messageElement, onSuccess, onError) {
+       const formData = {
+         'items': [{
+           'id': variantId,
+           'quantity': 1
+         }]
+       };
+
+       fetch('/cart/add.js', {
+         method: 'POST',
+         headers: {
+           'Content-Type': 'application/json',
+         },
+         body: JSON.stringify(formData)
+       })
+       .then(response => {
+         if (!response.ok) {
+           throw new Error(`HTTP error! status: ${response.status}`);
+         }
+         return response.json();
+       })
+       .then(data => {
+         console.log('Product added successfully:', data);
+         
+         // Check if the response indicates an error
+         if (data.status && data.status === 422) {
+           throw new Error(data.description || 'Error al añadir producto al carrito');
+         }
+         
+         // Dispatch cart update event to refresh cart UI
+         publish(PUB_SUB_EVENTS.cartUpdate, {
+           source: 'recargo-equivalencia-3dids',
+           cartData: data,
+           variantId: variantId
+         });
+         
+         // Also directly call onCartUpdate for immediate refresh
+         const cartItems = document.querySelector('cart-items');
+         if (cartItems && typeof cartItems.onCartUpdate === 'function') {
+           cartItems.onCartUpdate();
+         }
+         
+         const cartDrawerItems = document.querySelector('cart-drawer-items');
+         if (cartDrawerItems && typeof cartDrawerItems.onCartUpdate === 'function') {
+           cartDrawerItems.onCartUpdate();
+         }
+         
+         // Update the hidden input to reflect the new cart state
+         const productCheckInput = document.getElementById('cart-product-check');
+         if (productCheckInput) {
+           productCheckInput.setAttribute('data-product-in-cart', 'true');
+         }
+         
+         // Call success callback
+         if (onSuccess) {
+           onSuccess();
+         }
+       })
+       .catch((error) => {
+         console.error('Error adding product to cart:', error);
+         
+         // Call error callback
+         if (onError) {
+           onError();
+         }
+       });
+     }
+
+    // Function that handles the new button action
+    newButtonAction(button) {
+      if (!button) return;
+      
+      // Disable button permanently and show processing text
+      button.disabled = true;
+      button.setAttribute('disabled', 'true');
+      button.setAttribute('aria-disabled', 'true');
+      button.classList.add('disabled');
+      button.style.opacity = '0.6';
+      button.style.cursor = 'not-allowed';
+      
+      // Change button text to "Procesando..."
+      const buttonText = button.querySelector('span') || button;
+      buttonText.textContent = 'Procesando...';
+      
+      // Check the hidden input for re attribute
+      const reInput = document.getElementById('cart-re-attribute');
+      const hasReAttribute = reInput && reInput.hasAttribute('data-re') && reInput.getAttribute('data-re') === 'true';
+      
+      // Log for debugging
+      console.log('Checkout button hijacked:', button);
+      
+      // Function to proceed to checkout
+      const proceedToCheckout = () => {
+        window.location.href = '/checkout';
+      };
+      
+      // Check if customer has 're' tag
+      if (hasReAttribute) {
+        // Check if product is already in cart using the hidden input
+        const productCheckInput = document.getElementById('cart-product-check');
+        const productInCart = productCheckInput && productCheckInput.getAttribute('data-product-in-cart') === 'true';
+        
+        if (productInCart) {
+          // Check and fix quantity before proceeding to checkout
+          const variantId = this.getRecargoEquivalenciaVariant();
+          console.log('Product is in cart, checking quantity for variant:', variantId);
+          if (variantId) {
+            this.checkAndFixRecargoQuantity(variantId, proceedToCheckout);
+          } else {
+            console.log('No variant ID found, proceeding to checkout');
+            proceedToCheckout();
+          }
+        } else {
+          // Get product from theme settings
+          const variantId = this.getRecargoEquivalenciaVariant();
+          if (variantId) {
+            // Create a dummy message element for the addProductToCart function
+            const dummyMessageElement = document.createElement('div');
+            this.addProductToCart(variantId, dummyMessageElement, () => {
+              // After adding product, check and fix quantity before proceeding
+              this.checkAndFixRecargoQuantity(variantId, proceedToCheckout);
+            }, () => {
+              // On error, just proceed to checkout anyway
+              proceedToCheckout();
+            });
+          } else {
+            // If product not configured, proceed to checkout anyway
+            proceedToCheckout();
+          }
+        }
+      } else {
+        // For users without 're' tag, proceed directly to checkout
+        proceedToCheckout();
+      }
+    }
+  }
+
+  // Initialize the hijacker
+  const hijacker = new CheckoutHijacker();
+  
+  // Also check and fix quantity on page load if product is already in cart
+  // Quantity check is now only performed when checkout button is clicked
+</script>
+
+<style>
+  /* Optional: Style for disabled hijacked buttons */
+  button.disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+</style>

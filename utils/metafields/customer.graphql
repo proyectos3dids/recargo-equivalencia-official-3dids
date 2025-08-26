@@ -1,0 +1,62 @@
+mutation {
+  metafieldDefinitionCreate(definition: {
+    name: "VIES"
+    namespace: "custom"
+    key: "vies"
+    type: "single_line_text_field"
+    ownerType: CUSTOMER
+    visibleToStorefrontApi: false
+  }) {
+    metafieldDefinition {
+      id
+      name
+      key
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+mutation {
+  metafieldDefinitionCreate(definition: {
+    name: "B2B"
+    namespace: "custom"
+    key: "b2b"
+    type: "boolean"
+    ownerType: CUSTOMER
+    visibleToStorefrontApi: false
+  }) {
+    metafieldDefinition {
+      id
+      name
+      key
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
+
+mutation {
+  metafieldDefinitionCreate(definition: {
+    name: "Checkout Blocks Rule Trigger"
+    namespace: "checkoutblocks"
+    key: "trigger"
+    type: "single_line_text_field"
+    ownerType: CUSTOMER
+    visibleToStorefrontApi: false
+  }) {
+    metafieldDefinition {
+      id
+      name
+      key
+    }
+    userErrors {
+      field
+      message
+    }
+  }
+}
