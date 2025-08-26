@@ -151,6 +151,52 @@ Puedes añadir más condiciones en la sección de detección de clientes:
 - ✅ **Ajax Cart**
 - ⚠️ **Otros temas**: Puede requerir ajustes menores
 
+### Adaptación a otros temas
+
+**IMPORTANTE**: Si vas a implementar este sistema en un tema diferente a Dawn, debes adaptar los eventos y selectores del snippet según la estructura específica de tu tema:
+
+1. **Eventos PUB_SUB**: Verifica que tu tema utilice el mismo sistema de eventos (`PUB_SUB_EVENTS.cartUpdate`) o adapta el código para usar los eventos específicos de tu tema.
+
+2. **Selectores de elementos**: Los siguientes selectores pueden necesitar modificación según tu tema:
+   - `cart-items` - Elemento del carrito principal
+   - `cart-drawer-items` - Elemento del cajón del carrito
+   - Selectores de botones de checkout específicos de tu tema
+
+3. **Estructura del carrito**: Asegúrate de que tu tema maneje el carrito de manera similar (usando `/cart/add.js`, `/cart/change.js`, etc.)
+
+4. **Funciones de actualización**: Verifica que las funciones `onCartUpdate()` existan en los elementos del carrito de tu tema o adapta el código según corresponda.
+
+### Modificaciones adicionales requeridas
+
+Para que el snippet funcione correctamente, es necesario agregar código de verificación en los archivos del carrito del tema:
+
+#### 1. Archivo principal del carrito (ej: `sections/main-cart-items.liquid`)
+Agregar el siguiente código dentro del contenedor principal del carrito:
+
+```liquid
+{%- comment -%} Check if recargo equivalencia product from theme settings is in cart {%- endcomment -%}
+{%- assign product_in_cart = false -%}
+{%- if settings.recargo_equivalencia_product != blank -%}
+  {%- for item in cart.items -%}
+    {%- if item.product.id == settings.recargo_equivalencia_product.id -%}
+      {%- assign product_in_cart = true -%}
+      {%- break -%}
+    {%- endif -%}
+  {%- endfor -%}
+{%- endif -%}
+
+{%- if product_in_cart -%}
+  <input type="hidden" id="cart-product-check" data-product-in-cart="true" />
+{%- else -%}
+  <input type="hidden" id="cart-product-check" data-product-in-cart="false" />
+{%- endif -%}
+```
+
+#### 2. Archivo del drawer/cajón del carrito (ej: `snippets/cart-drawer.liquid`)
+Agregar el mismo código anterior dentro del contenedor del drawer del carrito.
+
+**Nota**: Los nombres de archivo pueden variar según el tema utilizado. Busca los archivos que manejan la visualización del carrito principal y el drawer lateral en tu tema específico.
+
 ## Solución de Problemas
 
 ### El recargo no se añade automáticamente
