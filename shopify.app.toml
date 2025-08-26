@@ -1,7 +1,7 @@
 # Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
 
 client_id = "f7ef609a633175b38e769c68c1a7e874"
-name = "recargo-equivalencia-official-3dids"
+name = "Recargo equivalencia | 3dids"
 handle = "recargo-equivalencia-official-3dids"
 application_url = "https://shopify.dev/apps/default-app-home"
 embedded = true

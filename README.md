@@ -168,23 +168,29 @@ Puedes añadir más condiciones en la sección de detección de clientes:
 
 ### Modificaciones adicionales requeridas
 
-Para que el snippet funcione correctamente, es necesario agregar código de verificación en los archivos del carrito del tema:
+Para que el snippet funcione correctamente, es necesario agregar código de verificación en los archivos del carrito del tema. **IMPORTANTE**: En lugar de añadir código independiente, debes integrar la verificación en los bucles existentes de `cart.items`.
 
 #### 1. Archivo principal del carrito (ej: `sections/main-cart-items.liquid`)
-Agregar el siguiente código dentro del contenedor principal del carrito:
+
+**Busca el bucle existente** que recorre `cart.items` (generalmente algo como `{% for item in cart.items %}`) y **modifica la lógica** para incluir la verificación del producto de recargo:
 
 ```liquid
-{%- comment -%} Check if recargo equivalencia product from theme settings is in cart {%- endcomment -%}
+{%- comment -%} Inicializar variable antes del bucle existente {%- endcomment -%}
 {%- assign product_in_cart = false -%}
-{%- if settings.recargo_equivalencia_product != blank -%}
-  {%- for item in cart.items -%}
-    {%- if item.product.id == settings.recargo_equivalencia_product.id -%}
-      {%- assign product_in_cart = true -%}
-      {%- break -%}
-    {%- endif -%}
-  {%- endfor -%}
-{%- endif -%}
 
+{%- for item in cart.items -%}
+  {%- comment -%} Verificar si es el producto de recargo equivalencia - solo asignar si aún no se ha encontrado {%- endcomment -%}
+  {%- unless product_in_cart -%}
+    {%- if settings.recargo_equivalencia_product != blank and item.product.id == settings.recargo_equivalencia_product.id -%}
+      {%- assign product_in_cart = true -%}
+    {%- endif -%}
+  {%- endunless -%}
+  
+  {%- comment -%} Aquí continúa el código existente del bucle para mostrar cada item {%- endcomment -%}
+  <!-- El resto del código existente del item -->
+{%- endfor -%}
+
+{%- comment -%} Añadir después del bucle {%- endcomment -%}
 {%- if product_in_cart -%}
   <input type="hidden" id="cart-product-check" data-product-in-cart="true" />
 {%- else -%}
@@ -193,9 +199,41 @@ Agregar el siguiente código dentro del contenedor principal del carrito:
 ```
 
 #### 2. Archivo del drawer/cajón del carrito (ej: `snippets/cart-drawer.liquid`)
-Agregar el mismo código anterior dentro del contenedor del drawer del carrito.
 
-**Nota**: Los nombres de archivo pueden variar según el tema utilizado. Busca los archivos que manejan la visualización del carrito principal y el drawer lateral en tu tema específico.
+**Busca el bucle existente** de `cart.items` en el drawer y aplica la misma modificación:
+
+```liquid
+{%- comment -%} Inicializar variable antes del bucle existente del drawer {%- endcomment -%}
+{%- assign drawer_product_in_cart = false -%}
+
+{%- for item in cart.items -%}
+  {%- comment -%} Verificar si es el producto de recargo equivalencia - solo asignar si aún no se ha encontrado {%- endcomment -%}
+  {%- unless drawer_product_in_cart -%}
+    {%- if settings.recargo_equivalencia_product != blank and item.product.id == settings.recargo_equivalencia_product.id -%}
+      {%- assign drawer_product_in_cart = true -%}
+    {%- endif -%}
+  {%- endunless -%}
+  
+  {%- comment -%} Aquí continúa el código existente del bucle del drawer {%- endcomment -%}
+  <!-- El resto del código existente del item del drawer -->
+{%- endfor -%}
+
+{%- comment -%} Añadir después del bucle del drawer {%- endcomment -%}
+{%- if drawer_product_in_cart -%}
+  <input type="hidden" id="cart-product-check" data-product-in-cart="true" />
+{%- else -%}
+  <input type="hidden" id="cart-product-check" data-product-in-cart="false" />
+{%- endif -%}
+```
+
+**Pasos para implementar:**
+
+1. **Localiza los archivos**: Busca los archivos que manejan la visualización del carrito principal y el drawer lateral en tu tema específico
+2. **Encuentra los bucles**: Identifica dónde se hace `{% for item in cart.items %}` en cada archivo
+3. **Integra la verificación**: Añade la lógica de verificación **dentro** del bucle existente, no como código separado
+4. **Añade el input hidden**: Coloca el elemento `<input type="hidden" id="cart-product-check">` **después** del bucle correspondiente
+
+**Nota**: Los nombres de archivo pueden variar según el tema utilizado. La clave es encontrar dónde se renderizan los items del carrito y modificar esos bucles específicos.
 
 ## Solución de Problemas
 
