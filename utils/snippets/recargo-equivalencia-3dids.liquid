@@ -53,9 +53,6 @@
   {% comment %} If no customer is logged in, remove cliente_RE and recargo_variant_id attributes and remove recargo product from cart {% endcomment %}
   {%- if cart.attributes.cliente_RE or cart.attributes.recargo_variant_id -%}
     <script>
-      console.log('=== NO CUSTOMER LOGGED IN - CLEANING CART ===');
-      console.log('Removing cliente_RE attributes and recargo product from cart');
-      
       // First, remove the attributes
       fetch('/cart/update.js', {
         method: 'POST',
@@ -67,13 +64,10 @@
           }
         })
       }).then(() => {
-        console.log('✓ Cart attributes removed');
-        
         // Then, check if recargo product is in cart and remove it
         {% assign recargo_variant_id = all_products[settings.recargo_equivalencia_product].selected_or_first_available_variant.id %}
         {% for item in cart.items %}
           {% if item.variant_id == recargo_variant_id %}
-            console.log('Found recargo product in cart, removing it');
             fetch('/cart/change.js', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
@@ -81,61 +75,33 @@
                 id: {{ item.variant_id }},
                 quantity: 0
               })
-            }).then(() => {
-              console.log('✓ Recargo product removed from cart');
-            }).catch(error => {
-              console.error('✗ Error removing recargo product:', error);
             });
             {% break %}
           {% endif %}
         {% endfor %}
-      }).catch(error => {
-        console.error('✗ Error removing cart attributes:', error);
       });
     </script>
   {%- endif -%}
 {% endif %}
 
 {% comment %} Auto-add recargo product if cliente_RE is true and product is not in cart {% endcomment %}
-<script>
-  console.log('=== RECARGO DEBUG INFO ===');
-  console.log('Cart attributes:', {{ cart.attributes | json }});
-  console.log('cliente_RE attribute:', '{{ cart.attributes.cliente_RE }}');
-  console.log('recargo_variant_id from settings:', {{ recargo_variant_id }});
-  console.log('Cart items count:', {{ cart.items.size }});
-  console.log('Cart items:', {{ cart.items | map: 'variant_id' | json }});
-</script>
 
 {%- if cart.attributes.cliente_RE == "true" -%}
-  <script>
-    console.log('✓ Cliente RE condition met - cliente_RE is true');
-  </script>
   
   {% comment %} Check if recargo product is already in cart {% endcomment %}
   {% assign recargo_in_cart = false %}
   {% for item in cart.items %}
-    <script>
-      console.log('Checking item variant_id:', {{ item.variant_id }}, 'against recargo_variant_id:', {{ recargo_variant_id }});
-    </script>
     {% if item.variant_id == recargo_variant_id %}
       {% assign recargo_in_cart = true %}
-      <script>
-        console.log('✓ Recargo product found in cart!');
-      </script>
       {% break %}
     {% endif %}
   {% endfor %}
   
-  <script>
-    console.log('recargo_in_cart result:', {{ recargo_in_cart }});
-  </script>
+
   
   {% comment %} If recargo product is not in cart, add it automatically {% endcomment %}
   {%- unless recargo_in_cart -%}
     <script>
-      console.log('✓ Recargo product NOT in cart - proceeding to add it');
-      console.log('Adding recargo product with variant ID:', {{ recargo_variant_id }});
-      
       fetch('/cart/add.js', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -144,29 +110,13 @@
           quantity: 1
         })
       })
-      .then(response => {
-        console.log('Add to cart response status:', response.status);
-        return response.json();
-      })
+      .then(response => response.json())
       .then(data => {
-        console.log('✓ Recargo product added successfully:', data);
-        console.log('✓ Product added without page refresh');
         // Optionally trigger a cart update event or update cart UI here
         // window.dispatchEvent(new Event('cart:updated'));
-      })
-      .catch(error => {
-        console.error('✗ Error adding recargo product:', error);
       });
     </script>
-  {%- else -%}
-    <script>
-      console.log('ℹ Recargo product already in cart - no action needed');
-    </script>
   {%- endunless -%}
-{%- else -%}
-  <script>
-    console.log('ℹ Cliente RE condition NOT met - cliente_RE is not true');
-  </script>
 {%- endif -%}
 
 
@@ -310,42 +260,30 @@
         return parseInt(variantId);
       }
       
-      console.error('Recargo de equivalencia product not configured in theme settings');
+      // Recargo de equivalencia product not configured in theme settings
       return null;
     }
 
     // Function to check and fix recargo equivalencia quantity in cart
     checkAndFixRecargoQuantity(variantId, callback) {
-      console.log('Checking recargo equivalencia quantity for variant ID:', variantId);
-      
       // Get current cart
       fetch('/cart.js')
         .then(response => response.json())
         .then(cart => {
-          console.log('Current cart items:', cart.items);
-          
           // Find the recargo equivalencia product in cart
           const recargoItem = cart.items.find(item => {
-            console.log('Checking item variant_id:', item.variant_id, 'against target:', variantId);
             return item.variant_id == variantId; // Use == instead of === to handle string/number comparison
           });
           
-          console.log('Found recargo item:', recargoItem);
-          
           if (recargoItem && recargoItem.quantity > 1) {
-            console.log('Recargo quantity is', recargoItem.quantity, '- fixing to 1');
-            
             // Find the line index of the recargo item (1-based index)
             const lineIndex = cart.items.findIndex(item => item.variant_id == variantId) + 1;
-            console.log('Found recargo item at line index:', lineIndex);
             
             // Update quantity to 1 using line-based format
             const updateData = {
               'line': lineIndex,
               'quantity': 1
             };
-            
-            console.log('Sending update request:', updateData);
             
             fetch('/cart/change.js', {
               method: 'POST',
@@ -354,12 +292,8 @@
               },
               body: JSON.stringify(updateData)
             })
-            .then(response => {
-              console.log('Update response status:', response.status);
-              return response.json();
-            })
+            .then(response => response.json())
             .then(data => {
-              console.log('Recargo equivalencia quantity fixed to 1. Response:', data);
               
               // Dispatch cart update event
               publish(PUB_SUB_EVENTS.cartUpdate, {
@@ -382,16 +316,13 @@
               if (callback) callback();
             })
             .catch(error => {
-              console.error('Error fixing recargo equivalencia quantity:', error);
               if (callback) callback();
             });
           } else {
-            console.log('Quantity is already 1 or product not in cart, continuing');
             if (callback) callback();
           }
         })
         .catch(error => {
-          console.error('Error checking cart:', error);
           if (callback) callback();
         });
     }
@@ -419,7 +350,6 @@
          return response.json();
        })
        .then(data => {
-         console.log('Product added successfully:', data);
          
          // Check if the response indicates an error
          if (data.status && data.status === 422) {
@@ -456,7 +386,6 @@
          }
        })
        .catch((error) => {
-         console.error('Error adding product to cart:', error);
          
          // Call error callback
          if (onError) {
@@ -485,8 +414,7 @@
       const reInput = document.getElementById('cart-re-attribute');
       const hasReAttribute = reInput && reInput.hasAttribute('data-re') && reInput.getAttribute('data-re') === 'true';
       
-      // Log for debugging
-      console.log('Checkout button hijacked:', button);
+
       
       // Function to proceed to checkout
       const proceedToCheckout = () => {
@@ -502,11 +430,10 @@
         if (productInCart) {
           // Check and fix quantity before proceeding to checkout
           const variantId = this.getRecargoEquivalenciaVariant();
-          console.log('Product is in cart, checking quantity for variant:', variantId);
+
           if (variantId) {
             this.checkAndFixRecargoQuantity(variantId, proceedToCheckout);
           } else {
-            console.log('No variant ID found, proceeding to checkout');
             proceedToCheckout();
           }
         } else {
@@ -537,7 +464,6 @@
   // Initialize the hijacker
   const hijacker = new CheckoutHijacker();
   
-  // Also check and fix quantity on page load if product is already in cart
   // Quantity check is now only performed when checkout button is clicked
 </script>
 
